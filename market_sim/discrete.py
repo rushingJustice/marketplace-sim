@@ -5,7 +5,7 @@ Main discrete-time simulation loop for marketplace simulation.
 import numpy as np
 from typing import List, Optional
 from .config import SimConfig
-from .entities import Shift, Nurse, BookingEvent, SimulationResult
+from .entities import Shift, Nurse, BookingEvent, SimulationResult, SimulationState
 from .mechanics import process_nurse_choice, update_shift_statuses
 
 
@@ -130,6 +130,78 @@ def run_simulation(config: Optional[SimConfig] = None) -> SimulationResult:
     )
     
     return result
+
+
+def run_simulation_with_tracking(
+    config: Optional[SimConfig] = None
+) -> tuple[SimulationResult, List[SimulationState], List[Shift]]:
+    """
+    Enhanced simulation that tracks states for visualization.
+    
+    Args:
+        config: Simulation configuration. If None, uses default config.
+        
+    Returns:
+        - SimulationResult: Standard results
+        - List[SimulationState]: State at each timestep  
+        - List[Shift]: Final shift states
+    """
+    if config is None:
+        config = SimConfig()
+    
+    # Set random seed for reproducibility
+    if config.random_seed is not None:
+        np.random.seed(config.random_seed)
+    
+    # Initialize shifts
+    shifts = initialize_shifts(config)
+    
+    # Track all booking events and states
+    all_booking_events = []
+    simulation_states = []
+    total_arrivals = 0
+    
+    # Main simulation loop
+    for t in range(config.horizon):
+        current_time = float(t)
+        
+        # Count arrivals before processing
+        arriving_nurses = generate_arrivals(config, current_time)
+        total_arrivals += len(arriving_nurses)
+        
+        # Process timestep (re-generate arrivals inside)
+        booking_events = simulate_timestep(shifts, config, current_time)
+        all_booking_events.extend(booking_events)
+        
+        # Capture simulation state after processing timestep
+        shift_statuses = [shift.status for shift in shifts]
+        available_count = sum(1 for shift in shifts if shift.is_available(current_time))
+        filled_count = len(shifts) - available_count
+        
+        state = SimulationState(
+            timestep=t,
+            shift_statuses=shift_statuses,
+            available_count=available_count,
+            filled_count=filled_count
+        )
+        simulation_states.append(state)
+    
+    # Calculate summary statistics
+    total_bookings = len(all_booking_events)
+    treated_bookings = sum(1 for event in all_booking_events if event.shift_treated)
+    control_bookings = total_bookings - treated_bookings
+    
+    # Create result object
+    result = SimulationResult(
+        booking_events=all_booking_events,
+        total_arrivals=total_arrivals,
+        total_bookings=total_bookings,
+        booking_rate=0.0,  # Will be calculated in __post_init__
+        treated_bookings=treated_bookings,
+        control_bookings=control_bookings
+    )
+    
+    return result, simulation_states, shifts
 
 
 def print_simulation_summary(result: SimulationResult) -> None:

@@ -70,6 +70,16 @@ class BookingEvent:
 
 
 @dataclass
+class SimulationState:
+    """Captures the state of the simulation at a specific timestep."""
+    
+    timestep: int
+    shift_statuses: list[str]  # Status of each shift at this timestep
+    available_count: int
+    filled_count: int
+    
+
+@dataclass
 class SimulationResult:
     """Contains results from a complete simulation run."""
     
