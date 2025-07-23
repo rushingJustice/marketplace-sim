@@ -1,9 +1,208 @@
 # Project Plan - Marketplace Interference Simulation
 
-## Current Stage: Stage 1 - Basic Discrete-Time Model
+## Current Stage: Stage 2 - Visualization System
 **Status**: Planning Phase  
 **Active Agent**: Planner  
 **Last Updated**: 2025-01-23
+
+## Stage 1 Status: COMPLETED ✅
+**Approval**: REVIEWER approved with excellent rating  
+**Implementation**: All core functionality working correctly
+
+## Stage 2 Specifications
+
+### Goal
+See what's happening before you measure it. Create visual tools to understand marketplace dynamics and validate that interference is occurring as expected.
+
+### Core Visualizations to Implement
+
+#### 1. Shift Availability Heatmap
+**Purpose**: Show shift availability patterns over time  
+**Design**: 
+- X-axis: Time (simulation timesteps)
+- Y-axis: Shift ID 
+- Color: Availability status (open=light, filled=dark)
+- **Expected pattern**: Treated shifts should show darker bands (filled more often)
+
+**Technical specs**:
+```python
+def plot_availability_heatmap(
+    result: SimulationResult, 
+    shifts: List[Shift],
+    config: SimConfig
+) -> plt.Figure
+```
+
+#### 2. Booking Timeline Scatter Plot  
+**Purpose**: Show when and which shifts get booked  
+**Design**:
+- X-axis: Time (when booking occurred)
+- Y-axis: Shift ID
+- Color: Treatment status (treated=red, control=blue)
+- Point size: Could indicate utility or consideration set position
+
+**Technical specs**:
+```python
+def plot_booking_timeline(
+    result: SimulationResult
+) -> plt.Figure
+```
+
+#### 3. Running Booking Rate Line Chart
+**Purpose**: Track booking success over time for treated vs control  
+**Design**:
+- X-axis: Time (rolling window)
+- Y-axis: Booking rate (bookings/arrivals)
+- Two lines: Treated shifts vs Control shifts
+- Rolling window approach for smooth visualization
+
+**Technical specs**:
+```python
+def plot_running_booking_rates(
+    result: SimulationResult,
+    window_size: int = 50
+) -> plt.Figure
+```
+
+### Implementation Requirements
+
+#### File Structure for Stage 2
+```
+market_sim/
+├── __init__.py          # Existing
+├── config.py            # Existing  
+├── entities.py          # Existing
+├── mechanics.py         # Existing
+├── discrete.py          # Existing
+└── plots.py             # NEW - All visualization functions
+
+notebooks/
+├── 01_basic_sim.ipynb   # NEW - Interactive Stage 1 demo
+└── 02_visualize.ipynb   # NEW - Stage 2 visualization demo
+```
+
+#### Enhanced Data Collection
+Modify existing simulation to track additional data needed for visualizations:
+
+**SimulationState class** (new):
+```python
+@dataclass
+class SimulationState:
+    timestep: int
+    shift_statuses: List[str]  # Track all shift statuses at each timestep
+    available_count: int
+    filled_count: int
+```
+
+**Enhanced SimulationResult**:
+- Add `simulation_states: List[SimulationState]` 
+- Add `shift_history: List[List[Shift]]` (snapshots over time)
+
+#### Visualization Functions
+
+##### 1. Core Plotting Functions (`plots.py`)
+```python
+def setup_plot_style() -> None:
+    """Set consistent matplotlib style for all plots."""
+
+def plot_availability_heatmap(
+    simulation_states: List[SimulationState],
+    shifts: List[Shift],
+    config: SimConfig,
+    figsize: tuple = (12, 8)
+) -> plt.Figure:
+    """Create shift availability heatmap."""
+
+def plot_booking_timeline(
+    booking_events: List[BookingEvent],
+    shifts: List[Shift], 
+    figsize: tuple = (12, 6)
+) -> plt.Figure:
+    """Create booking timeline scatter plot."""
+
+def plot_running_booking_rates(
+    booking_events: List[BookingEvent],
+    total_arrivals_over_time: List[int],
+    window_size: int = 50,
+    figsize: tuple = (10, 6)
+) -> plt.Figure:
+    """Plot running booking rates for treated vs control."""
+
+def create_summary_dashboard(
+    result: SimulationResult,
+    shifts: List[Shift],
+    config: SimConfig
+) -> plt.Figure:
+    """Create 2x2 dashboard with all key visualizations."""
+```
+
+##### 2. Analysis Helper Functions
+```python
+def calculate_shift_utilization(
+    booking_events: List[BookingEvent],
+    shifts: List[Shift],
+    horizon: int
+) -> Dict[int, float]:
+    """Calculate utilization rate for each shift."""
+
+def identify_interference_patterns(
+    booking_events: List[BookingEvent],
+    shifts: List[Shift]
+) -> Dict[str, Any]:
+    """Analyze patterns that indicate interference."""
+```
+
+### Enhanced Simulation Loop
+
+Modify `discrete.py` to collect visualization data:
+
+```python
+def run_simulation_with_tracking(
+    config: Optional[SimConfig] = None
+) -> Tuple[SimulationResult, List[SimulationState], List[Shift]]:
+    """
+    Enhanced simulation that tracks states for visualization.
+    
+    Returns:
+        - SimulationResult: Standard results
+        - List[SimulationState]: State at each timestep  
+        - List[Shift]: Final shift states
+    """
+```
+
+### Jupyter Notebooks
+
+#### `notebooks/01_basic_sim.ipynb`
+- Interactive demo of Stage 1 functionality
+- Parameter exploration with widgets
+- Basic result interpretation
+
+#### `notebooks/02_visualize.ipynb`  
+- Demo all Stage 2 visualizations
+- Interactive parameter adjustment
+- Visual validation of interference patterns
+
+### Success Criteria
+
+1. **Availability Heatmap**: Treated shifts show darker bands (more filled time)
+2. **Timeline Scatter**: Clear clustering patterns visible 
+3. **Running Rates**: Treated vs control rates show divergence over time
+4. **Dashboard**: All plots render correctly and are informative
+5. **Notebooks**: Interactive demos work smoothly
+
+### Validation Requirements
+
+#### Visual Validation Tests
+1. **Pattern Recognition**: Treated shifts should be filled more frequently
+2. **Color Coding**: Treatment status clearly distinguishable  
+3. **Timeline Accuracy**: Booking events plotted at correct times
+4. **Rate Calculations**: Running rates calculated correctly
+
+#### Technical Tests
+1. **Plot Generation**: All plotting functions execute without errors
+2. **Data Consistency**: Visualization data matches simulation results
+3. **Performance**: Plots render in reasonable time (<5 seconds)
+4. **Styling**: Consistent appearance across all visualizations
 
 ## Project Overview
 Build a marketplace interference simulation that demonstrates how A/B testing fails in two-sided markets. This follows the Li, Johari & Weintraub (2022) research paper.
