@@ -61,17 +61,47 @@ for t in range(horizon):
 #### File Structure for Stage 1
 ```
 market_sim/
-├── __init__.py
+├── __init__.py      # Package init (already created)
 ├── entities.py      # Shift and Nurse classes
 ├── mechanics.py     # Choice model logic
-└── discrete.py      # Main simulation loop
+├── discrete.py      # Main simulation loop
+└── config.py        # Configuration parameters
 ```
 
-#### Key Implementation Details
-1. **Arrival Process**: Bernoulli arrivals (probability λ × dt per timestep)
-2. **Choice Process**: Top-k selection, then position-weighted multinomial logit
-3. **Supply Dynamics**: When booked, shift reopens after exponential(1/μ) time
-4. **Treatment Assignment**: For now, random 50/50 split
+#### Detailed Implementation Specs
+
+##### 1. Configuration System (`config.py`)
+```python
+@dataclass
+class SimConfig:
+    horizon: int = 1000          # Simulation time steps
+    lambda_c: float = 0.5        # Customer arrival rate per time step  
+    mu: float = 1.0              # Shift reopening rate
+    k: int = 5                   # Consideration set size
+    n_shifts: int = 20           # Total number of shifts
+    treatment_prob: float = 0.5  # Probability of treatment assignment
+    position_weights: List[float] = field(default_factory=lambda: [1.0, 0.8, 0.6, 0.4, 0.2])
+    random_seed: Optional[int] = None
+```
+
+##### 2. Entity Classes (`entities.py`)
+- Use dataclasses for clean structure
+- Shift tracks current availability and treatment status
+- Nurse tracks arrival time and treatment assignment
+- Add utility calculation methods
+
+##### 3. Choice Mechanics (`mechanics.py`) 
+- `get_available_shifts()`: Filter shifts by availability status
+- `select_consideration_set()`: Top-k selection with treatment ranking
+- `make_choice()`: Position-weighted multinomial logit
+- `update_shift_status()`: Handle booking and reopening
+
+##### 4. Main Loop (`discrete.py`)
+- `run_simulation()`: Main entry point with configuration
+- `simulate_timestep()`: Process one time step 
+- `generate_arrivals()`: Bernoulli arrival process
+- `process_nurse()`: Handle single nurse choice process
+- `update_shifts()`: Check for shifts that should reopen
 
 #### Configuration Parameters
 - `horizon`: Simulation time horizon (default: 1000)
@@ -80,11 +110,43 @@ market_sim/
 - `k`: Consideration set size (default: 5)
 - `n_shifts`: Number of shifts (default: 20)
 
+### Algorithmic Details
+
+#### Choice Model Implementation
+1. **Available Shifts**: Filter where `status == "open"` and `current_time >= filled_until`
+2. **Treatment Ranking**: Sort treated shifts first, then by `base_utility` (descending)
+3. **Consideration Set**: Take first `k` shifts from sorted list
+4. **Choice Probabilities**: `prob[i] = position_weights[i] * exp(utility[i]) / sum_all`
+5. **Selection**: Use `np.random.multinomial` with calculated probabilities
+
+#### Supply Dynamics
+1. **Booking**: Set `status = "filled"`, `filled_until = current_time + exponential(1/mu)`
+2. **Reopening**: Check all shifts where `current_time >= filled_until`, set `status = "open"`
+3. **Treatment Assignment**: Assign randomly at shift creation, never changes
+
 ### Testing Requirements
-1. **Unit Tests**: Test each class and function individually
-2. **Integration Test**: Run full simulation and check output format
-3. **Parameter Sweep**: Try different parameter values
-4. **Edge Cases**: No available shifts, single shift, etc.
+
+#### Unit Tests (`tests/test_stage1.py`)
+```python
+def test_shift_creation()           # Test Shift class initialization
+def test_nurse_creation()           # Test Nurse class initialization  
+def test_available_shifts()         # Test filtering logic
+def test_consideration_set()        # Test top-k selection
+def test_choice_probabilities()     # Test logit calculation
+def test_shift_booking()            # Test status updates
+def test_shift_reopening()          # Test timing logic
+```
+
+#### Integration Tests
+1. **Full Simulation**: Run with default config, verify completion
+2. **Booking Rate**: Compare to theoretical λ * P(match)  
+3. **Empty Market**: All shifts booked - should handle gracefully
+4. **Single Shift**: k=1, n_shifts=1 - basic edge case
+
+#### Output Validation
+- Return structured data with timestamps, nurse_ids, shift_ids, treatment_status
+- Track booking events and reopening events
+- Verify treatment assignment stays consistent
 
 ### Next Stages Preview
 - Stage 2: Add visualizations (heatmaps, timelines)
