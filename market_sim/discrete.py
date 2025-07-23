@@ -55,27 +55,8 @@ def generate_arrivals(config: SimConfig, current_time: float) -> List[Nurse]:
     return arrivals
 
 
-def simulate_timestep(
-    shifts: List[Shift], 
-    config: SimConfig, 
-    current_time: float
-) -> List[BookingEvent]:
-    """Process one timestep of the simulation."""
-    booking_events = []
-    
-    # Update shift statuses (reopen shifts that should be available)
-    update_shift_statuses(shifts, current_time)
-    
-    # Generate arriving nurses
-    arriving_nurses = generate_arrivals(config, current_time)
-    
-    # Process each nurse's choice
-    for nurse in arriving_nurses:
-        booking_event = process_nurse_choice(nurse, shifts, config, current_time)
-        if booking_event:
-            booking_events.append(booking_event)
-    
-    return booking_events
+# simulate_timestep function removed - was causing double-counting bug
+# All simulation logic is now inline in run_simulation and run_simulation_with_tracking
 
 
 def run_simulation(config: Optional[SimConfig] = None) -> SimulationResult:
