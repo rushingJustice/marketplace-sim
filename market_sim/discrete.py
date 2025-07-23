@@ -106,13 +106,19 @@ def run_simulation(config: Optional[SimConfig] = None) -> SimulationResult:
     for t in range(config.horizon):
         current_time = float(t)
         
-        # Count arrivals before processing
+        # Generate arrivals once per timestep
         arriving_nurses = generate_arrivals(config, current_time)
         total_arrivals += len(arriving_nurses)
         
-        # Process timestep (re-generate arrivals inside)
-        booking_events = simulate_timestep(shifts, config, current_time)
-        all_booking_events.extend(booking_events)
+        # Update shift statuses (reopen shifts that should be available)
+        from .mechanics import update_shift_statuses, process_nurse_choice
+        update_shift_statuses(shifts, current_time)
+        
+        # Process each nurse's choice
+        for nurse in arriving_nurses:
+            booking_event = process_nurse_choice(nurse, shifts, config, current_time)
+            if booking_event:
+                all_booking_events.append(booking_event)
     
     # Calculate summary statistics
     total_bookings = len(all_booking_events)
@@ -165,13 +171,19 @@ def run_simulation_with_tracking(
     for t in range(config.horizon):
         current_time = float(t)
         
-        # Count arrivals before processing
+        # Generate arrivals once per timestep
         arriving_nurses = generate_arrivals(config, current_time)
         total_arrivals += len(arriving_nurses)
         
-        # Process timestep (re-generate arrivals inside)
-        booking_events = simulate_timestep(shifts, config, current_time)
-        all_booking_events.extend(booking_events)
+        # Update shift statuses (reopen shifts that should be available)
+        from .mechanics import update_shift_statuses, process_nurse_choice
+        update_shift_statuses(shifts, current_time)
+        
+        # Process each nurse's choice
+        for nurse in arriving_nurses:
+            booking_event = process_nurse_choice(nurse, shifts, config, current_time)
+            if booking_event:
+                all_booking_events.append(booking_event)
         
         # Capture simulation state after processing timestep
         shift_statuses = [shift.status for shift in shifts]
