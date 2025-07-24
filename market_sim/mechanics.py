@@ -21,19 +21,21 @@ def select_consideration_set(
     """
     Select top-k shifts for consideration set.
     
-    Treatment ranking: treated shifts sort first, then by base_utility (descending).
-    For Stage 1, we use listing randomization (shift treatment only).
+    Proper ranking: sort by utility descending, use treatment as tiebreaker.
+    This ensures fair representation of both treated and control shifts.
     """
     if not shifts:
         return []
     
-    # Sort: treated shifts first, then by utility (descending)
-    def sort_key(shift: Shift) -> Tuple[int, float]:
-        # Return (1, utility) for treated, (0, utility) for control
-        # This puts treated shifts first (1 > 0), then sorts by utility within each group
-        return (1 if shift.is_treated else 0, shift.base_utility)
+    # Sort: by effective utility (descending), then treated shifts first for ties
+    def sort_key(shift: Shift) -> Tuple[float, int]:
+        # Calculate effective utility (base + treatment boost)
+        effective_utility = shift.base_utility + (config.treatment_boost if shift.is_treated else 0.0)
+        # Return (-utility, -treated) to sort by utility DESC, then treated first for ties
+        # The negative signs ensure descending order for both criteria
+        return (-effective_utility, 0 if shift.is_treated else 1)
     
-    sorted_shifts = sorted(shifts, key=sort_key, reverse=True)
+    sorted_shifts = sorted(shifts, key=sort_key)
     
     # Take top k shifts
     k = min(config.k, len(sorted_shifts))
@@ -63,8 +65,11 @@ def calculate_choice_probabilities(
     
     weights = np.array(weights)
     
-    # Calculate utilities and probabilities
-    utilities = np.array([shift.base_utility for shift in consideration_set])
+    # Calculate effective utilities (base + treatment boost)
+    utilities = np.array([
+        shift.base_utility + (config.treatment_boost if shift.is_treated else 0.0)
+        for shift in consideration_set
+    ])
     
     # Position-weighted logit: weight[i] * exp(utility[i])
     weighted_utilities = weights * np.exp(utilities)

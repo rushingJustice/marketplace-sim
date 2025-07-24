@@ -167,21 +167,28 @@ Treatment works by forcing treated shifts higher in the ranking.
 
 ### How Treatment Changes Rankings
 
-Two approaches:
-1. **Fixed boost**: Treated shifts get +0.5 utility
-2. **Rank manipulation**: Treated shifts sort first, then by utility
+**Updated Approach - Utility-Based Treatment**:
+- **Utility boost**: Treated shifts get `base_utility + treatment_boost`
+- **Fair competition**: All shifts ranked purely by effective utility
+- **Real-world mapping**: Models actual marketplace interventions (promotions, better photos, discounts)
+- **Clean separation**: Algorithm stays fair, treatment affects the product quality
 
-The paper uses approach 2. A treated shift with utility 3.0 ranks above a control shift with utility 4.0.
+Example: A treated shift with base utility 3.0 and treatment_boost 0.5 has effective utility 3.5.
+
+**Previous Approach (Deprecated)**:
+- Rank manipulation where treated shifts sorted first, then by utility
+- Created artificial algorithmic bias rather than modeling real improvements
 
 ### Consideration Set Selection
 
 For each nurse:
 1. Get all open shifts
 2. Compute effective utility for each:
-   - If nurse treated (CR): treated shifts get bonus
-   - If shift treated (LR): it gets bonus
-3. Take top k by effective utility
-4. These k shifts form the consideration set
+   - `effective_utility = base_utility + (treatment_boost if shift.is_treated else 0.0)`
+   - For CR (customer randomization): future implementation will apply bonus based on nurse treatment
+3. Sort shifts by effective utility (descending), use treatment status as tiebreaker
+4. Take top k shifts to form the consideration set
+5. Apply position weights and multinomial choice from this fair, utility-ranked set
 
 ### Supply Dynamics
 

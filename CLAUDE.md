@@ -115,10 +115,17 @@ class Nurse:
 - Position weights: [1.0, 0.8, 0.6, 0.4, 0.2] (first slot best)
 - Probability ∝ position_weight × exp(utility)
 
+### Treatment Effects Model
+- **Utility-Based Treatment**: Treated shifts get `base_utility + treatment_boost`
+- **Fair Competition**: All shifts ranked purely by effective utility
+- **Marketplace Interventions**: Models real effects like promotions, better photos, discounts
+- **Interference Mechanism**: Better treated shifts steal demand from control shifts
+
 ## Critical Implementation Details
 
 - **Treatment Assignment**: For LR, assign at shift creation, NOT each reopen
-- **Ranking**: Treated shifts sort first, then by utility (not just utility boost)
+- **Treatment Effect**: Apply `treatment_boost` to effective utility, not ranking manipulation
+- **Fair Ranking**: Sort by effective utility (base + boost), use treatment as tiebreaker only
 - **Supply Dynamics**: When booked, shift reopens after exponential(1/μ) time
 - **Block Bootstrap**: Use ~100 events per block, handle edge effects
 
@@ -161,7 +168,8 @@ python -m market_sim.continuous \
 
 - **ρ = λ/μ**: Demand/supply ratio (key driver of bias magnitude)
 - **k**: Consideration set size (how many shifts nurses see)
-- **Treatment strength**: How much to boost treated items
+- **treatment_boost**: Utility increase for treated shifts (e.g., 0.3 = moderate boost)
+- **treatment_prob**: Fraction of shifts assigned to treatment (default 0.5)
 - **Block size**: For bootstrap (~100 events, tune empirically)
 
 ## Paper Reference

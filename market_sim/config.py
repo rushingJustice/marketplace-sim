@@ -21,6 +21,7 @@ class SimConfig:
     
     # Treatment parameters
     treatment_prob: float = 0.5            # Probability of treatment assignment
+    treatment_boost: float = 0.0           # Utility boost for treated shifts
     
     # Choice model parameters
     position_weights: List[float] = field(
@@ -44,6 +45,8 @@ class SimConfig:
             raise ValueError("n_shifts must be positive")
         if not (0 <= self.treatment_prob <= 1):
             raise ValueError("treatment_prob must be between 0 and 1")
+        if not isinstance(self.treatment_boost, (int, float)):
+            raise ValueError("treatment_boost must be numeric")
         if len(self.position_weights) == 0:
             raise ValueError("position_weights cannot be empty")
         if any(w < 0 for w in self.position_weights):
